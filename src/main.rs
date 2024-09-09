@@ -150,12 +150,14 @@ fn plot_hex(hex: &[[[KiteColor; 6]; N as usize]; N as usize]) {
 
                 // Exterior lines
                 let n = h.neighbor(kite);
-                if 0 <= n.0 && n.0 < N && 0 <= n.1 && n.1 < N {
-                    if hex[h.0 as usize][h.1 as usize][kite]
+                if 0 <= n.0
+                    && n.0 < N
+                    && 0 <= n.1
+                    && n.1 < N
+                    && hex[h.0 as usize][h.1 as usize][kite]
                         != hex[n.0 as usize][n.1 as usize][(kite + 2) % 6]
-                    {
-                        pict.draw_line(midpoint, corner, YELLOW);
-                    }
+                {
+                    pict.draw_line(midpoint, corner, YELLOW);
                 }
             }
         }
@@ -167,7 +169,7 @@ fn plot_hex(hex: &[[[KiteColor; 6]; N as usize]; N as usize]) {
 fn get(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize) -> KiteColor {
     let Hex(x, y) = h;
 
-    if 0 <= x && x < N && 0 <= y && y < N {
+    if (0..N).contains(&x) && (0..N).contains(&y) {
         hex[x as usize][y as usize][kite]
     } else {
         !0 // Some non-empty color
@@ -176,7 +178,7 @@ fn get(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize
 
 fn set(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize, c: KiteColor) {
     let Hex(x, y) = h;
-    if 0 <= x && x < N && 0 <= y && y < N {
+    if (0..N).contains(&x) && (0..N).contains(&y) {
         hex[x as usize][y as usize][kite] = c;
     } else {
         panic!("set({h:?})");
@@ -191,7 +193,7 @@ fn hat_is_empty(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, ki
         && get(hex, h, (kite + 1) % 6) == EMPTY
         && get(hex, n1, (kite + 2) % 6) == EMPTY
         && get(hex, n1, (kite + 3) % 6) == EMPTY
-        && get(hex, n2, (kite + 0) % 6) == EMPTY
+        && get(hex, n2, kite) == EMPTY
         && get(hex, n2, (kite + 3) % 6) == EMPTY
         && get(hex, n2, (kite + 4) % 6) == EMPTY
         && get(hex, n2, (kite + 5) % 6) == EMPTY
@@ -210,7 +212,7 @@ fn hat_set(
     set(hex, h, (kite + 1) % 6, c);
     set(hex, n1, (kite + 2) % 6, c);
     set(hex, n1, (kite + 3) % 6, c);
-    set(hex, n2, (kite + 0) % 6, c);
+    set(hex, n2, kite, c);
     set(hex, n2, (kite + 3) % 6, c);
     set(hex, n2, (kite + 4) % 6, c);
     set(hex, n2, (kite + 5) % 6, c);
@@ -234,7 +236,7 @@ fn try_position(
 fn search(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], budget: usize) {
     if budget == 0 {
         print!("{}[H", 27 as char);
-        plot_hex(&hex);
+        plot_hex(hex);
         return;
     }
 
