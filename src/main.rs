@@ -235,7 +235,19 @@ fn try_position(
 
 fn search(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], budget: usize) {
     if budget == 0 {
-        print!("{}[H", 27 as char);
+        for y in 2..N - 2 {
+            for x in 2..N - 2 {
+                let h = Hex(x, y);
+
+                for k in 0..6 {
+                    if get(hex, h, k) == EMPTY {
+                        return;
+                    }
+                }
+            }
+        }
+
+        //print!("{}[H", 27 as char);
         plot_hex(hex);
         return;
     }
@@ -264,7 +276,10 @@ fn main() {
         hex[2][3][5] = '*';
     */
 
-    search(&mut hex, 11);
+    for budget in 1.. {
+        println!("Budget {budget}");
+        search(&mut hex, budget);
+    }
 
     /*
         for y in 1..N {
