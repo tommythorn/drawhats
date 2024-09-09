@@ -94,8 +94,57 @@ fn avg(p1: (isize, isize), p2: (isize, isize)) -> (isize, isize) {
     ((p1.0 + p2.0) / 2, (p1.1 + p2.1) / 2)
 }
 
-fn _avg3(p1: (isize, isize), p2: (isize, isize), p3: (isize, isize)) -> (isize, isize) {
+fn avg3(p1: (isize, isize), p2: (isize, isize), p3: (isize, isize)) -> (isize, isize) {
     ((p1.0 + p2.0 + p3.0) / 3, (p1.1 + p2.1 + p3.1) / 3)
+}
+
+fn plot_hex(hex: &[[[char; 6]; N as usize]; N as usize]) {
+    const WIDTH: isize = 640;
+    let mut pict = Pict::new(WIDTH, WIDTH);
+
+    // I just need the center point of hexagon h
+    // The midpoint between the neighbor h' and h AVG(h',h) is the middle of the line between them.
+    // Call the left neighbor of h and h' L(h,h') and R(h,h') then the avg of h, h', and L(
+
+    for y in 0..N {
+        for x in 0..N {
+            let h = Hex(x, y);
+
+            pict.plot(h.screen(), WHITE);
+
+            // Interiour lines
+            for kite in 0..6 {
+                if hex[h.0 as usize][h.1 as usize][kite]
+                    != hex[h.0 as usize][h.1 as usize][(kite + 5) % 6]
+                {
+                    // draw line from center
+                    let n = h.neighbor(kite);
+                    let midpoint = avg(h.screen(), n.screen());
+                    pict.draw_line(h.screen(), midpoint, YELLOW);
+                }
+            }
+
+            // Exterior lines
+            for kite in 0..6 {
+                let n = h.neighbor(kite);
+                if !(0 <= n.0 && n.0 < N && 0 <= n.1 && n.1 < N) {
+                    continue;
+                }
+
+                if hex[h.0 as usize][h.1 as usize][kite]
+                    != hex[n.0 as usize][n.1 as usize][(kite + 2) % 6]
+                {
+                    // Draw line from center line to corner
+                    let midpoint = avg(h.screen(), n.screen());
+                    let nn = h.neighbor((kite + 1) % 6);
+                    let corner = avg3(h.screen(), n.screen(), nn.screen());
+                    pict.draw_line(midpoint, corner, YELLOW);
+                }
+            }
+        }
+    }
+
+    pict.dump_iterm2_image(Some(100));
 }
 
 fn main() {
@@ -111,60 +160,7 @@ fn main() {
     hex[2][3][4] = '*';
     hex[2][3][5] = '*';
 
-    const WIDTH: isize = 640;
-    let mut pict = Pict::new(WIDTH, WIDTH);
-
-    // I just need the center point of hexagon h
-    // The midpoint between the neighbor h' and h AVG(h',h) is the middle of the line between them.
-    // Call the left neighbor of h and h' L(h,h') and R(h,h') then the avg of h, h', and L(
-
-    for y in 0..N {
-        for x in 0..N {
-            let h = Hex(x, y);
-
-            pict.plot(h.screen(), WHITE);
-
-            for kite in 0..6 {
-                if hex[h.0 as usize][h.1 as usize][kite]
-                    != hex[h.0 as usize][h.1 as usize][(kite + 5) % 6]
-                {
-                    // draw line from center
-                    let n = h.neighbor(kite);
-                    let midpoint = avg(h.screen(), n.screen());
-                    pict.draw_line(h.screen(), midpoint, YELLOW);
-                }
-            }
-        }
-    }
-
-    /*
-
-            // Only directions 2 and 3 as cell above took care of 0
-            // and cells to the left took care of the rest
-            let n2 = h.neighbor(2);
-
-            if hex[h.0][h.1][1] != hex[n2.0][n2.1][5] {
-            // Draw a separating line between the two kites
-
-
-
-            let n3 = h.neighbor(3);
-
-            for d in 2.
-                // Plot top line
-            // Neighbor center
-                let nc: Vec<(isize, isize)> = (0..6).map(|d| h.neighbor(d).screen()).collect();
-                let c = h.screen();
-                let lefttop = avg3(c, nc[0], nc[5]);
-                let righttop = avg3(cc, nc[0], nc[1]);
-
-                pict.draw_line(lefttop, righttop, WHITE);
-                //pict.draw_line(h.screen(), h0.screen(), WHITE);
-            }
-        }
-    */
-
-    pict.dump_iterm2_image(Some(100));
+    plot_hex(&hex);
 
     /*
         for y in 1..N {

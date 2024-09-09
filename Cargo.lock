@@ -18,7 +18,7 @@ dependencies = [
 [[package]]
 name = "iterm2canvas"
 version = "0.1.0"
-source = "git+https://github.com/tommythorn/iterm2canvas#69f1ab98f924a3333ce5228016f20f57d4657c1a"
+source = "git+https://github.com/tommythorn/iterm2canvas#4b8305113d8e1b9ea26beb75a0ebf9d024ea273c"
 dependencies = [
  "base64",
 ]
