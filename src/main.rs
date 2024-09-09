@@ -31,6 +31,7 @@ use iterm2canvas::Pict;
 // Grid width and height
 
 const WHITE: u32 = 0xFFFFFF;
+const GREY: u32 = 0x7F7F7F;
 const YELLOW: u32 = 0xFFFF00;
 
 const N: isize = 7;
@@ -113,34 +114,48 @@ fn plot_hex(hex: &[[[KiteColor; 6]; N as usize]; N as usize]) {
             let h = Hex(x, y);
 
             pict.plot(h.screen(), WHITE);
+            let center = h.screen();
 
-            // Interiour lines
             for kite in 0..6 {
+                // Interiour lines
+                // draw line from center
+                let n = h.neighbor(kite);
+                let midpoint = avg(center, n.screen());
+                let nn = h.neighbor((kite + 1) % 6);
+                let corner = avg3(center, n.screen(), nn.screen());
+
+                // XXX Imagine a brilliant kite painting code
+                // drawing the center-corner-midpoint triangle
+                // instead of this
+                //pict.draw_triangle(center,corner,midpoint, GREY);
+                if hex[h.0 as usize][h.1 as usize][kite] != EMPTY {
+                    let kite_center = avg3(center, corner, midpoint);
+                    {
+                        for x in -3..=3 {
+                            for y in -3..=3 {
+                                pict.plot((kite_center.0 + x, kite_center.1 + y), GREY);
+                            }
+                        }
+                    }
+                }
+
                 if hex[h.0 as usize][h.1 as usize][kite]
                     != hex[h.0 as usize][h.1 as usize][(kite + 5) % 6]
                 {
                     // draw line from center
                     let n = h.neighbor(kite);
-                    let midpoint = avg(h.screen(), n.screen());
-                    pict.draw_line(h.screen(), midpoint, YELLOW);
+                    let midpoint = avg(center, n.screen());
+                    pict.draw_line(center, midpoint, YELLOW);
                 }
-            }
 
-            // Exterior lines
-            for kite in 0..6 {
+                // Exterior lines
                 let n = h.neighbor(kite);
-                if !(0 <= n.0 && n.0 < N && 0 <= n.1 && n.1 < N) {
-                    continue;
-                }
-
-                if hex[h.0 as usize][h.1 as usize][kite]
-                    != hex[n.0 as usize][n.1 as usize][(kite + 2) % 6]
-                {
-                    // Draw line from center line to corner
-                    let midpoint = avg(h.screen(), n.screen());
-                    let nn = h.neighbor((kite + 1) % 6);
-                    let corner = avg3(h.screen(), n.screen(), nn.screen());
-                    pict.draw_line(midpoint, corner, YELLOW);
+                if 0 <= n.0 && n.0 < N && 0 <= n.1 && n.1 < N {
+                    if hex[h.0 as usize][h.1 as usize][kite]
+                        != hex[n.0 as usize][n.1 as usize][(kite + 2) % 6]
+                    {
+                        pict.draw_line(midpoint, corner, YELLOW);
+                    }
                 }
             }
         }
@@ -168,16 +183,11 @@ fn set(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize
     }
 }
 
-fn try_position(
-    hex: &mut [[[KiteColor; 6]; N as usize]; N as usize],
-    h: Hex,
-    kite: usize,
-    budget: usize,
-) {
+fn hat_is_empty(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize) -> bool {
     let n1 = h.neighbor((kite + 1) % 6);
     let n2 = h.neighbor((kite + 2) % 6);
 
-    if get(hex, h, kite) == EMPTY
+    get(hex, h, kite) == EMPTY
         && get(hex, h, (kite + 1) % 6) == EMPTY
         && get(hex, n1, (kite + 2) % 6) == EMPTY
         && get(hex, n1, (kite + 3) % 6) == EMPTY
@@ -185,26 +195,39 @@ fn try_position(
         && get(hex, n2, (kite + 3) % 6) == EMPTY
         && get(hex, n2, (kite + 4) % 6) == EMPTY
         && get(hex, n2, (kite + 5) % 6) == EMPTY
-    {
-        set(hex, h, kite, budget);
-        set(hex, h, (kite + 1) % 6, budget);
-        set(hex, n1, (kite + 2) % 6, budget);
-        set(hex, n1, (kite + 3) % 6, budget);
-        set(hex, n2, (kite + 0) % 6, budget);
-        set(hex, n2, (kite + 3) % 6, budget);
-        set(hex, n2, (kite + 4) % 6, budget);
-        set(hex, n2, (kite + 5) % 6, budget);
+}
+
+fn hat_set(
+    hex: &mut [[[KiteColor; 6]; N as usize]; N as usize],
+    h: Hex,
+    kite: usize,
+    c: KiteColor,
+) {
+    let n1 = h.neighbor((kite + 1) % 6);
+    let n2 = h.neighbor((kite + 2) % 6);
+
+    set(hex, h, kite, c);
+    set(hex, h, (kite + 1) % 6, c);
+    set(hex, n1, (kite + 2) % 6, c);
+    set(hex, n1, (kite + 3) % 6, c);
+    set(hex, n2, (kite + 0) % 6, c);
+    set(hex, n2, (kite + 3) % 6, c);
+    set(hex, n2, (kite + 4) % 6, c);
+    set(hex, n2, (kite + 5) % 6, c);
+}
+
+fn try_position(
+    hex: &mut [[[KiteColor; 6]; N as usize]; N as usize],
+    h: Hex,
+    kite: usize,
+    budget: usize,
+) {
+    if hat_is_empty(hex, h, kite) {
+        hat_set(hex, h, kite, budget);
 
         search(hex, budget - 1);
 
-        set(hex, h, kite, EMPTY);
-        set(hex, h, (kite + 1) % 6, EMPTY);
-        set(hex, n1, (kite + 2) % 6, EMPTY);
-        set(hex, n1, (kite + 3) % 6, EMPTY);
-        set(hex, n2, (kite + 0) % 6, EMPTY);
-        set(hex, n2, (kite + 3) % 6, EMPTY);
-        set(hex, n2, (kite + 4) % 6, EMPTY);
-        set(hex, n2, (kite + 5) % 6, EMPTY);
+        hat_set(hex, h, kite, EMPTY);
     }
 }
 
