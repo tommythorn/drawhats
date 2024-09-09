@@ -1,3 +1,5 @@
+![Four hat tiling](four-hats.png)
+
 # Drawing the "Hat" tiling
 
 This rathole all started because I wanted a nice cut out for the side
