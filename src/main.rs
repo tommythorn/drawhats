@@ -33,12 +33,15 @@ use iterm2canvas::Pict;
 const WHITE: u32 = 0xFFFFFF;
 const YELLOW: u32 = 0xFFFF00;
 
-const N: isize = 10;
+const N: isize = 7;
 
 const RADIUS: isize = 32;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Hex(isize, isize);
+
+type KiteColor = usize;
+const EMPTY: KiteColor = 0;
 
 impl Hex {
     fn screen(self) -> (isize, isize) {
@@ -98,9 +101,8 @@ fn avg3(p1: (isize, isize), p2: (isize, isize), p3: (isize, isize)) -> (isize, i
     ((p1.0 + p2.0 + p3.0) / 3, (p1.1 + p2.1 + p3.1) / 3)
 }
 
-fn plot_hex(hex: &[[[char; 6]; N as usize]; N as usize]) {
-    const WIDTH: isize = 640;
-    let mut pict = Pict::new(WIDTH, WIDTH);
+fn plot_hex(hex: &[[[KiteColor; 6]; N as usize]; N as usize]) {
+    let mut pict = Pict::new((N * 2 + 1) * RADIUS, (N * 2 + 1) * RADIUS);
 
     // I just need the center point of hexagon h
     // The midpoint between the neighbor h' and h AVG(h',h) is the middle of the line between them.
@@ -147,20 +149,97 @@ fn plot_hex(hex: &[[[char; 6]; N as usize]; N as usize]) {
     pict.dump_iterm2_image(Some(100));
 }
 
+fn get(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize) -> KiteColor {
+    let Hex(x, y) = h;
+
+    if 0 <= x && x < N && 0 <= y && y < N {
+        hex[x as usize][y as usize][kite]
+    } else {
+        !0 // Some non-empty color
+    }
+}
+
+fn set(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], h: Hex, kite: usize, c: KiteColor) {
+    let Hex(x, y) = h;
+    if 0 <= x && x < N && 0 <= y && y < N {
+        hex[x as usize][y as usize][kite] = c;
+    } else {
+        panic!("set({h:?})");
+    }
+}
+
+fn try_position(
+    hex: &mut [[[KiteColor; 6]; N as usize]; N as usize],
+    h: Hex,
+    kite: usize,
+    budget: usize,
+) {
+    let n1 = h.neighbor((kite + 1) % 6);
+    let n2 = h.neighbor((kite + 2) % 6);
+
+    if get(hex, h, kite) == EMPTY
+        && get(hex, h, (kite + 1) % 6) == EMPTY
+        && get(hex, n1, (kite + 2) % 6) == EMPTY
+        && get(hex, n1, (kite + 3) % 6) == EMPTY
+        && get(hex, n2, (kite + 0) % 6) == EMPTY
+        && get(hex, n2, (kite + 3) % 6) == EMPTY
+        && get(hex, n2, (kite + 4) % 6) == EMPTY
+        && get(hex, n2, (kite + 5) % 6) == EMPTY
+    {
+        set(hex, h, kite, budget);
+        set(hex, h, (kite + 1) % 6, budget);
+        set(hex, n1, (kite + 2) % 6, budget);
+        set(hex, n1, (kite + 3) % 6, budget);
+        set(hex, n2, (kite + 0) % 6, budget);
+        set(hex, n2, (kite + 3) % 6, budget);
+        set(hex, n2, (kite + 4) % 6, budget);
+        set(hex, n2, (kite + 5) % 6, budget);
+
+        search(hex, budget - 1);
+
+        set(hex, h, kite, EMPTY);
+        set(hex, h, (kite + 1) % 6, EMPTY);
+        set(hex, n1, (kite + 2) % 6, EMPTY);
+        set(hex, n1, (kite + 3) % 6, EMPTY);
+        set(hex, n2, (kite + 0) % 6, EMPTY);
+        set(hex, n2, (kite + 3) % 6, EMPTY);
+        set(hex, n2, (kite + 4) % 6, EMPTY);
+        set(hex, n2, (kite + 5) % 6, EMPTY);
+    }
+}
+
+fn search(hex: &mut [[[KiteColor; 6]; N as usize]; N as usize], budget: usize) {
+    if budget == 0 {
+        print!("{}[H", 27 as char);
+        plot_hex(&hex);
+        return;
+    }
+
+    for y in 2..N - 2 {
+        for x in 2..N - 2 {
+            for d in 0..6 {
+                try_position(hex, Hex(x, y), d, budget);
+            }
+        }
+    }
+}
+
 fn main() {
-    let mut hex = [[[' '; 6]; N as usize]; N as usize];
+    let mut hex = [[[EMPTY; 6]; N as usize]; N as usize];
 
-    // Highlight a hat
-    hex[2][2][1] = '*';
-    hex[2][2][2] = '*';
-    hex[3][2][4] = '*';
-    hex[3][2][3] = '*';
-    hex[2][3][0] = '*';
-    hex[2][3][1] = '*';
-    hex[2][3][4] = '*';
-    hex[2][3][5] = '*';
+    /*
+        // Highlight a hat
+        hex[2][2][1] = '*';
+        hex[2][2][2] = '*';
+        hex[3][2][4] = '*';
+        hex[3][2][3] = '*';
+        hex[2][3][0] = '*';
+        hex[2][3][1] = '*';
+        hex[2][3][4] = '*';
+        hex[2][3][5] = '*';
+    */
 
-    plot_hex(&hex);
+    search(&mut hex, 11);
 
     /*
         for y in 1..N {
